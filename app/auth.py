@@ -19,6 +19,13 @@ most sophisticated:
   bake into the page, no login form to build.
 - /health stays open, so an uptime checker doesn't need credentials
   just to ask "are you alive".
+- As a second path in on the SAME username, the password may instead
+  be a one-time Discernment Key Bank code (DK0000-DK9999, see
+  app/db.py) — a client's single-use login, separate from the shared
+  operator password. A code's first successful use starts a 24h
+  validity window (so the rest of that same visit keeps working, since
+  the browser resends the same header on every request); once that
+  window elapses, the code is dead forever.
 
 This is the front door, not the whole house: it stops an
 unauthenticated caller from reaching the API at all. The Discernment
@@ -28,19 +35,33 @@ in as the operator" and "a human just deliberately approved this one
 loosening action" are not the same guarantee.
 """
 import hmac
+import re
 import sys
 
 from flask import Response, current_app, request
 
+from app import db as arachnode_db
+
 EXEMPT_PATHS = {"/health"}
+DK_CODE_RE = re.compile(r"^DK\d{4}$")
+
+
+def _dk_code_ok(password: str) -> bool:
+    if not DK_CODE_RE.match(password or ""):
+        return False
+    return arachnode_db.check_and_redeem_dk_code(password)
 
 
 def _credentials_ok(auth) -> bool:
     if auth is None:
         return False
     user_ok = hmac.compare_digest(auth.username or "", current_app.config["ADMIN_USER"])
-    pass_ok = hmac.compare_digest(auth.password or "", current_app.config["ADMIN_PASSWORD"])
-    return user_ok and pass_ok
+    if not user_ok:
+        return False
+    password = auth.password or ""
+    if hmac.compare_digest(password, current_app.config["ADMIN_PASSWORD"]):
+        return True
+    return _dk_code_ok(password)
 
 
 def install_auth(app):
