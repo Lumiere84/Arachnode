@@ -1,7 +1,9 @@
 """
 Seeds the policy library — the same seven policies shown in the
 Arachnode AI Policy Console demo, so the console and the real backend
-tell the same story. Run once against a fresh database:
+tell the same story. Also ensures the Discernment Key Bank (10,000
+one-time client login codes, DK0000-DK9999) exists. Both steps are
+idempotent, so it's safe to run on every container start:
 
     python seed.py
 """
@@ -72,8 +74,11 @@ def seed(app=None):
         secret = app.config["SIGNING_SECRET"]
         for spec in POLICIES:
             arachnode_db.upsert_policy({**spec, "signature": sign_policy(spec, secret)})
+        arachnode_db.ensure_dk_codes_seeded()
         print(f"Seeded {len(POLICIES)} policies across "
               f"{len({p['domain'] for p in POLICIES})} domains.")
+        print(f"Discernment Key Bank ready: {arachnode_db.DK_CODE_COUNT} one-time "
+              "client codes (DK0000-DK9999).")
 
 
 if __name__ == "__main__":
