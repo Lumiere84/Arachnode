@@ -1,0 +1,675 @@
+<!doctype html><html><head><meta charset="utf8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Arachnode AI Policy Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{color-scheme:light}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  :root{
+    --bg:#eef1f5; --surface:#ffffff; --surface-2:#f4f6f9; --border:#d7dce3;
+    --text:#161a20; --text-dim:#5b6472; --text-faint:#8891a0;
+    --accent:#0e7c86; --accent-ink:#ffffff; --accent-soft:#dcf0f1;
+    --allow:#1f8a5f; --allow-soft:#e0f3ea;
+    --deny:#b23b3b; --deny-soft:#f7e4e2;
+    --quarantine:#a3650f; --quarantine-soft:#f7ead2;
+    --capture:#7a3bb2; --capture-soft:#efe2fa;
+    --shadow: 0 1px 2px rgba(22,26,32,.05), 0 10px 28px -16px rgba(22,26,32,.18);
+    --radius: 10px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0f1318; --surface:#171d24; --surface-2:#1b222a; --border:#2b333e;
+      --text:#e8ecf1; --text-dim:#a2aab8; --text-faint:#6b7280;
+      --accent:#57d6e0; --accent-ink:#0b1417; --accent-soft:#152b2e;
+      --allow:#57d99b; --allow-soft:#132821;
+      --deny:#f2867f; --deny-soft:#301c1c;
+      --quarantine:#f0ac4c; --quarantine-soft:#332309;
+      --capture:#d1a1f2; --capture-soft:#26192f;
+      --shadow: 0 1px 2px rgba(0,0,0,.5), 0 14px 32px -16px rgba(0,0,0,.65);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0f1318; --surface:#171d24; --surface-2:#1b222a; --border:#2b333e;
+    --text:#e8ecf1; --text-dim:#a2aab8; --text-faint:#6b7280;
+    --accent:#57d6e0; --accent-ink:#0b1417; --accent-soft:#152b2e;
+    --allow:#57d99b; --allow-soft:#132821;
+    --deny:#f2867f; --deny-soft:#301c1c;
+    --quarantine:#f0ac4c; --quarantine-soft:#332309;
+    --capture:#d1a1f2; --capture-soft:#26192f;
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 14px 32px -16px rgba(0,0,0,.65);
+    color-scheme: dark;
+  }
+
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    padding: 20px 16px 64px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; display:flex; flex-direction:column; gap:22px;}
+  h1,h2,h3{font-family:'Manrope', ui-sans-serif, sans-serif; text-wrap:balance; margin:0;}
+  code, .mono{font-family:'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;}
+  a{color:var(--accent);}
+
+  .topbar{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;}
+  .brand{display:flex; align-items:center; gap:12px;}
+  .mark{
+    width:38px;height:38px;border-radius:9px;flex:none;
+    background:linear-gradient(155deg,var(--accent),var(--accent) 40%, var(--capture));
+    display:flex;align-items:center;justify-content:center;
+    color:var(--accent-ink); font-family:'Manrope'; font-weight:800; font-size:16px;
+    box-shadow:var(--shadow);
+  }
+  .brand-text h1{font-size:19px; font-weight:800; letter-spacing:.01em;}
+  .brand-text p{margin:1px 0 0; font-size:12.5px; color:var(--text-dim);}
+  .status-pill{
+    display:flex; align-items:center; gap:8px; padding:7px 12px 7px 10px;
+    background:var(--surface); border:1px solid var(--border); border-radius:999px;
+    font-size:12.5px; color:var(--text-dim); box-shadow:var(--shadow);
+  }
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--allow); box-shadow:0 0 0 3px var(--allow-soft); flex:none;}
+  .dot.offline{background:var(--deny); box-shadow:0 0 0 3px var(--deny-soft);}
+  @media (prefers-reduced-motion:no-preference){ .dot.live{animation:pulse 2.4s ease-in-out infinite;} }
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.45;}}
+  .retry-btn{background:none;border:none;color:var(--accent);font:inherit;font-weight:600;cursor:pointer;padding:0;}
+
+  .offline-banner{
+    display:none; background:var(--deny-soft); border:1px solid var(--deny); color:var(--deny);
+    border-radius:var(--radius); padding:12px 15px; font-size:13px; line-height:1.55;
+  }
+  .offline-banner.show{display:block;}
+  .offline-banner code{background:rgba(0,0,0,.08); padding:1px 5px; border-radius:4px;}
+
+  .stats{display:grid; grid-template-columns:repeat(4,1fr); gap:12px;}
+  .stat{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    padding:13px 15px; box-shadow:var(--shadow);
+  }
+  .stat .label{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-faint); font-weight:600;}
+  .stat .value{font-family:'Manrope'; font-weight:800; font-size:25px; margin-top:4px; font-variant-numeric:tabular-nums;}
+  .stat .sub{font-size:11.5px; color:var(--text-dim); margin-top:2px;}
+
+  .panel{
+    background:var(--surface); border:1px solid var(--border); border-radius:var(--radius);
+    box-shadow:var(--shadow); padding:18px 18px 20px; display:flex; flex-direction:column; gap:13px;
+  }
+  .panel-head{display:flex; align-items:baseline; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+  .panel-head h2{font-size:14px; text-transform:uppercase; letter-spacing:.06em;}
+  .panel-head .hint{font-size:12px; color:var(--text-faint);}
+
+  .grid2{display:grid; grid-template-columns:1.05fr 1fr; gap:16px; align-items:start;}
+  @media (max-width:840px){.grid2{grid-template-columns:1fr;} .stats{grid-template-columns:repeat(2,1fr);}}
+
+  .tabs{display:flex; gap:6px; flex-wrap:wrap;}
+  .tab{
+    font-family:'IBM Plex Mono'; font-size:11.5px; padding:5px 9px; border-radius:6px;
+    background:var(--surface-2); color:var(--text-dim); border:1px solid var(--border); cursor:pointer;
+  }
+  .tab[aria-selected="true"]{background:var(--accent-soft); color:var(--accent); border-color:var(--accent); font-weight:600;}
+
+  .policy-list{display:flex; flex-direction:column; gap:8px; max-height:330px; overflow-y:auto; padding-right:2px;}
+  .policy{
+    border:1px solid var(--border); border-radius:8px; padding:10px 11px; background:var(--surface-2);
+    display:flex; flex-direction:column; gap:5px;
+  }
+  .policy-top{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .policy-name{font-size:13px; font-weight:600;}
+  .policy-cond{font-family:'IBM Plex Mono'; font-size:11px; color:var(--text-dim); line-height:1.5; word-break:break-word;}
+  .pill{
+    font-family:'IBM Plex Mono'; font-size:10.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase;
+    padding:2.5px 8px; border-radius:999px; flex:none;
+  }
+  .pill.allow{background:var(--allow-soft); color:var(--allow);}
+  .pill.deny{background:var(--deny-soft); color:var(--deny);}
+  .pill.quarantine{background:var(--quarantine-soft); color:var(--quarantine);}
+  .pill.captured{background:var(--capture-soft); color:var(--capture);}
+  .pill.capture{background:var(--capture-soft); color:var(--capture);}
+  .pill.alert{background:var(--deny-soft); color:var(--deny);}
+  .pill.released{background:var(--allow-soft); color:var(--allow);}
+  .pill.policy{background:var(--accent-soft); color:var(--accent);}
+  .pill.ghost{background:transparent; color:var(--text-faint); border:1px solid var(--border);}
+
+  .tamper-tools{border-top:1px dashed var(--border); padding-top:12px; display:flex; flex-direction:column; gap:8px;}
+  .tamper-tools .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  select, input[type=text]{
+    font-family:'IBM Plex Mono'; font-size:12px; background:var(--surface); color:var(--text);
+    border:1px solid var(--border); border-radius:6px; padding:6px 8px;
+  }
+  button{
+    font-family:'IBM Plex Sans'; font-size:12.5px; font-weight:600; cursor:pointer;
+    border-radius:7px; padding:7px 12px; border:1px solid var(--border); background:var(--surface);
+    color:var(--text); transition:transform .06s ease;
+  }
+  button:hover{border-color:var(--accent);}
+  button:active{transform:translateY(1px);}
+  button:disabled{opacity:.5; cursor:not-allowed;}
+  button:focus-visible, select:focus-visible, input:focus-visible, .tab:focus-visible{
+    outline:2px solid var(--accent); outline-offset:2px;
+  }
+  button.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent);}
+  button.danger{background:var(--deny-soft); color:var(--deny); border-color:var(--deny);}
+  button.small{padding:5px 9px; font-size:11.5px;}
+  .tamper-note{font-size:11.5px; color:var(--text-faint); line-height:1.5;}
+
+  .scenario-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
+  @media (max-width:520px){.scenario-grid{grid-template-columns:1fr;}}
+  .scenario-btn{
+    text-align:left; display:flex; flex-direction:column; gap:2px; padding:9px 11px;
+    background:var(--surface-2);
+  }
+  .scenario-btn b{font-size:12.5px;}
+  .scenario-btn span{font-size:11px; color:var(--text-faint); font-family:'IBM Plex Mono';}
+
+  .terminal{
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px;
+    padding:12px 13px; font-family:'IBM Plex Mono'; font-size:12px; line-height:1.65;
+    min-height:150px; max-height:260px; overflow-y:auto;
+  }
+  .terminal .line{margin-bottom:4px; white-space:pre-wrap; word-break:break-word;}
+  .terminal .muted{color:var(--text-faint);}
+  .terminal .empty{color:var(--text-faint); font-style:normal;}
+
+  .chain-scroll{display:flex; gap:10px; overflow-x:auto; padding:4px 2px 10px;}
+  .block{
+    flex:none; width:230px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2);
+    padding:11px 12px; display:flex; flex-direction:column; gap:6px; position:relative;
+  }
+  .block.broken{border-color:var(--deny); box-shadow:0 0 0 1px var(--deny) inset;}
+  .block-idx{font-family:'IBM Plex Mono'; font-size:10.5px; color:var(--text-faint);}
+  .block-hash{font-family:'IBM Plex Mono'; font-size:10.5px; color:var(--text-dim); word-break:break-all;}
+  .block-hash b{color:var(--text-faint); font-weight:500;}
+  .chain-link{flex:none; align-self:center; color:var(--text-faint); font-family:'IBM Plex Mono'; font-size:14px;}
+  .chain-status{
+    font-family:'IBM Plex Mono'; font-size:12px; padding:5px 10px; border-radius:999px; display:inline-flex; gap:6px; align-items:center;
+  }
+  .chain-status.ok{background:var(--allow-soft); color:var(--allow);}
+  .chain-status.bad{background:var(--deny-soft); color:var(--deny);}
+  .chain-status.idle{background:var(--surface-2); color:var(--text-faint); border:1px solid var(--border);}
+
+  .qgrid{display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:10px;}
+  .qcard{
+    border:1px solid var(--border); border-radius:9px; background:var(--surface-2); padding:11px 12px;
+    display:flex; flex-direction:column; gap:6px;
+  }
+  .qcard .ref{font-family:'IBM Plex Mono'; font-size:12.5px; font-weight:600;}
+  .qcard .meta{font-size:11px; color:var(--text-faint); font-family:'IBM Plex Mono';}
+  .empty-note{color:var(--text-faint); font-size:12.5px; padding:6px 2px;}
+
+  footer{text-align:center; font-size:11.5px; color:var(--text-faint); padding-top:6px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">A</div>
+      <div class="brand-text">
+        <h1>Arachnode AI</h1>
+        <p>Policy Engine — live console · access / threat / data-governance</p>
+      </div>
+    </div>
+    <div class="status-pill"><span class="dot" id="connDot"></span> <span id="connText">connecting…</span></div>
+  </div>
+
+  <div class="offline-banner" id="offlineBanner">
+    Can't reach the Arachnode AI backend at this origin. Start it with <code>python run.py</code> in the
+    <code>arachnode-engine</code> folder, then <button class="retry-btn" id="retryBtn">retry</button>.
+  </div>
+
+  <div class="panel" id="discernmentPanel" style="gap:10px;">
+    <div class="panel-head">
+      <h2>Human-in-the-loop · Discernment Key</h2>
+      <span class="hint">the engine can tighten enforcement on its own — only a human can loosen it</span>
+    </div>
+    <div class="tamper-note">Automated policies may add containment (quarantine/capture/deny) without asking. Anything that <b style="color:var(--text-dim)">loosens</b> enforcement — approving an ALLOW rule, or releasing something from quarantine — is refused by the server until this key is supplied, standing in for a human approver's out-of-band credential.</div>
+    <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <div class="mono" style="font-size:12.5px; background:var(--surface-2); border:1px solid var(--border); padding:7px 11px; border-radius:7px; color:var(--text-dim);">
+        this is checked server-side against <b style="color:var(--text)">ARACHNODE_DISCERNMENT_KEY</b> — nothing here can pre-validate it
+      </div>
+      <input id="discernmentInput" type="text" placeholder="Enter Discernment Key to authorize" style="min-width:230px; flex:1;">
+      <span id="discernmentStatus" class="pill ghost">not entered</span>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="label">Active policies</div><div class="value" id="statPolicies">–</div><div class="sub">across 3 domains</div></div>
+    <div class="stat"><div class="label">Events evaluated</div><div class="value" id="statEvents">0</div><div class="sub">this session</div></div>
+    <div class="stat"><div class="label">Contained</div><div class="value" id="statQuarantine">0</div><div class="sub">quarantined + captured</div></div>
+    <div class="stat"><div class="label">Audit chain</div><div class="value" id="statChain" style="font-size:16px;">unverified</div><div class="sub">hash-linked, tamper-evident</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Policy library</h2>
+        <span class="hint">GET /policies</span>
+      </div>
+      <div class="tabs" id="domainTabs"></div>
+      <div class="policy-list" id="policyList"></div>
+
+      <div class="tamper-tools">
+        <div class="tamper-note"><b style="color:var(--text-dim)">Live edit vs. rogue edit —</b> the first calls <code>PATCH /policies/:id</code>; the engine re-signs it and keeps enforcing it. The second calls a demo-only endpoint that writes <code>action</code> directly, the way a compromised process with raw DB access would try to defang a rule — no signing involved.</div>
+        <div class="row">
+          <select id="tamperPolicy"></select>
+          <select id="tamperAction">
+            <option value="allow">set action → allow</option>
+            <option value="deny">set action → deny</option>
+            <option value="quarantine">set action → quarantine</option>
+            <option value="capture">set action → capture</option>
+          </select>
+        </div>
+        <div class="row">
+          <button class="small" id="signedEditBtn">Apply as signed edit</button>
+          <button class="small danger" id="rogueEditBtn">Apply as unsigned (rogue) edit</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Scenario console</h2>
+        <span class="hint">POST /events — a real request, a real decision</span>
+      </div>
+      <div class="scenario-grid" id="scenarioGrid"></div>
+      <div class="terminal" id="output"><div class="line empty">— fire a scenario above to see a decision trace —</div></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Audit chain</h2>
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+        <span class="hint">GET /audit-chain · each block hashes its content + the previous block's hash</span>
+        <button class="small" id="rewriteBtn">Simulate a rewritten record</button>
+        <button class="small primary" id="verifyBtn">Verify chain integrity</button>
+        <span class="chain-status idle" id="chainStatusPill">not yet verified</span>
+      </div>
+    </div>
+    <div class="chain-scroll" id="chain"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Quarantine &amp; capture</h2>
+      <span class="hint">GET /quarantine · artifacts and agents currently contained</span>
+    </div>
+    <div class="qgrid" id="quarantine"><div class="empty-note">Nothing contained yet — fire a threat or data-governance scenario.</div></div>
+  </div>
+
+  <footer>Arachnode AI Policy Engine · this page is a client of its own API — every decision, signature check and hash below is computed by the Flask backend, not this page.</footer>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // Same origin as the API — Flask serves this file, so every call
+  // below is a plain relative fetch. No CORS, no cross-origin CSP.
+  const API = "";
+
+  const DOMAIN_LABEL = { access:"Access", threat:"Threat", data_governance:"Data governance" };
+
+  const SCENARIOS = [
+    { label:"Malicious model upload", sub:"data_governance → expect QUARANTINE", domain:"data_governance",
+      payload:{artifact:{type:"model",name:"sentiment-v3",origin:"public_hub",scan_result:{malicious_layer_detected:true}}} },
+    { label:"Clean model upload", sub:"data_governance → expect ALLOW", domain:"data_governance",
+      payload:{artifact:{type:"model",name:"sentiment-v3-clean",origin:"public_hub",scan_result:{malicious_layer_detected:false}}} },
+    { label:"Agent requests admin scope", sub:"threat → expect CAPTURE", domain:"threat",
+      payload:{agent:{id:"agent-77",requested_scope:"admin",granted_scope:"read_only"}} },
+    { label:"Agent tool-call rate spike", sub:"threat → expect QUARANTINE", domain:"threat",
+      payload:{agent:{id:"agent-91",tool_calls_per_min:340}} },
+    { label:"Agent exfiltrates weights", sub:"data_governance → expect QUARANTINE", domain:"data_governance",
+      payload:{agent:{id:"agent-91",action:"export_weights"},artifact:{classification:"restricted"}} },
+    { label:"Contractor → restricted resource", sub:"access → expect DENY", domain:"access",
+      payload:{actor:{id:"u-42",role:"contractor"},resource:{classification:"restricted"}} },
+    { label:"Employee → internal resource", sub:"access → expect ALLOW", domain:"access",
+      payload:{actor:{id:"u-8",role:"employee"},resource:{classification:"internal"}} },
+    { label:"Beaconing C2 signal", sub:"threat → expect CAPTURE", domain:"threat",
+      payload:{source_ip:"203.0.113.7",signal:"beaconing_pattern",anomaly_score:0.93} },
+  ];
+
+  let currentDomainTab = "all";
+  let policiesCache = [];
+  let quarantineCache = [];
+  let chainCache = [];
+  let lastVerify = null;
+  let eventCount = 0;
+
+  const $ = (sel) => document.querySelector(sel);
+  const policyListEl = $("#policyList");
+  const domainTabsEl = $("#domainTabs");
+  const scenarioGridEl = $("#scenarioGrid");
+  const outputEl = $("#output");
+  const chainEl = $("#chain");
+  const quarantineEl = $("#quarantine");
+  const tamperPolicySel = $("#tamperPolicy");
+  const tamperActionSel = $("#tamperAction");
+
+  function fmtTime(iso){ return new Date(iso).toLocaleTimeString([], {hour12:false}); }
+  function short(hash){ return hash.slice(0,10) + "…" + hash.slice(-6); }
+
+  async function api(path, opts = {}){
+    const headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
+    let res;
+    try {
+      res = await fetch(API + path, Object.assign({}, opts, { headers }));
+    } catch (err) {
+      return { ok:false, network:true, status:0, body:null };
+    }
+    let body = null;
+    try { body = await res.json(); } catch (e) { /* no body */ }
+    return { ok: res.ok, status: res.status, body };
+  }
+
+  function discernmentHeaders(){
+    const v = $("#discernmentInput").value.trim();
+    return v ? { "X-Discernment-Key": v } : {};
+  }
+
+  function setConnected(ok){
+    const dot = $("#connDot"), text = $("#connText"), banner = $("#offlineBanner");
+    if (ok){
+      dot.className = "dot live"; text.textContent = "engine armed · connected";
+      banner.classList.remove("show");
+    } else {
+      dot.className = "dot offline"; text.textContent = "backend unreachable";
+      banner.classList.add("show");
+    }
+  }
+
+  async function checkHealth(){
+    const r = await api("/health");
+    setConnected(r.ok);
+    return r.ok;
+  }
+
+  function logLine(html, muted){
+    const line = document.createElement("div");
+    line.className = "line" + (muted ? " muted" : "");
+    line.innerHTML = html;
+    if (outputEl.querySelector(".empty")) outputEl.innerHTML = "";
+    outputEl.appendChild(line);
+    outputEl.scrollTop = outputEl.scrollHeight;
+  }
+
+  function renderTabs(){
+    const tabs = ["all", ...Object.keys(DOMAIN_LABEL)];
+    domainTabsEl.innerHTML = "";
+    tabs.forEach(t => {
+      const b = document.createElement("button");
+      b.className = "tab"; b.type = "button";
+      b.setAttribute("aria-selected", String(t === currentDomainTab));
+      b.textContent = t === "all" ? "All domains" : DOMAIN_LABEL[t];
+      b.addEventListener("click", () => { currentDomainTab = t; renderTabs(); renderPolicies(); });
+      domainTabsEl.appendChild(b);
+    });
+  }
+
+  function renderPolicies(){
+    const domains = currentDomainTab === "all" ? Object.keys(DOMAIN_LABEL) : [currentDomainTab];
+    policyListEl.innerHTML = "";
+    const visible = policiesCache.filter(p => domains.includes(p.domain))
+      .sort((a,b)=> a.domain.localeCompare(b.domain) || a.priority - b.priority);
+    if (!visible.length){
+      policyListEl.innerHTML = `<div class="empty-note">No policies loaded — is the backend connected?</div>`;
+      return;
+    }
+    visible.forEach(p => {
+      const el = document.createElement("div");
+      el.className = "policy";
+      el.innerHTML = `
+        <div class="policy-top">
+          <div class="policy-name">${p.name}</div>
+          <span class="pill ${p.action}">${p.action}</span>
+        </div>
+        <div class="policy-cond">${p.conditions.map(c=>`${c.field} ${c.operator} ${JSON.stringify(c.value)}`).join(" AND ")}</div>
+        <div class="policy-cond" style="color:var(--text-faint)">${DOMAIN_LABEL[p.domain]} · priority ${p.priority}</div>
+        <div style="display:flex; justify-content:flex-end;">
+          <button class="small danger" data-delete-policy="${p.id}" title="${p.action === 'allow' ? 'Tightens — no key needed' : 'Loosens — needs Discernment Key'}">Delete</button>
+        </div>
+      `;
+      policyListEl.appendChild(el);
+    });
+    policyListEl.querySelectorAll("[data-delete-policy]").forEach(btn => {
+      btn.addEventListener("click", () => deletePolicy(btn.dataset.deletePolicy));
+    });
+  }
+
+  function renderTamperSelect(){
+    tamperPolicySel.innerHTML = policiesCache.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+  }
+
+  function renderScenarios(){
+    scenarioGridEl.innerHTML = "";
+    SCENARIOS.forEach((s) => {
+      const b = document.createElement("button");
+      b.className = "scenario-btn";
+      b.innerHTML = `<b>${s.label}</b><span>${s.sub}</span>`;
+      b.addEventListener("click", () => fireScenario(s));
+      scenarioGridEl.appendChild(b);
+    });
+  }
+
+  function renderChain(){
+    chainEl.innerHTML = "";
+    if (!chainCache.length){
+      chainEl.innerHTML = `<div class="empty-note">No decisions recorded yet.</div>`;
+      return;
+    }
+    const brokenAt = lastVerify && lastVerify.verified === false ? lastVerify.broken_at : null;
+    chainCache.forEach((b) => {
+      const el = document.createElement("div");
+      const isBroken = brokenAt !== null && b.idx >= brokenAt;
+      el.className = "block" + (isBroken ? " broken" : "");
+      const pillClass = b.kind === "alert" ? "alert" : b.kind === "policy_change" ? "policy" : (b.action || "ghost");
+      const pillLabel = b.kind === "alert" ? "alert" : b.kind === "policy_change" ? b.action.replace("policy_", "") : b.action;
+      const idxLabel = b.kind === "alert" ? "SECURITY ALERT" : b.kind === "policy_change" ? "POLICY CHANGE" : (DOMAIN_LABEL[b.domain] || "");
+      el.innerHTML = `
+        <div class="block-idx">#${b.idx} · ${idxLabel}</div>
+        <span class="pill ${pillClass}" style="align-self:flex-start;">${pillLabel}</span>
+        <div class="policy-cond">${b.explanation}</div>
+        <div class="block-hash"><b>prev</b> ${short(b.prev_hash)}</div>
+        <div class="block-hash"><b>hash</b> ${short(b.hash)}</div>
+      `;
+      chainEl.appendChild(el);
+      if (b.idx < chainCache.length){
+        const link = document.createElement("div");
+        link.className = "chain-link";
+        link.textContent = "→";
+        if (b !== chainCache[chainCache.length - 1]) chainEl.appendChild(link);
+      }
+    });
+    chainEl.scrollLeft = chainEl.scrollWidth;
+  }
+
+  function renderQuarantine(){
+    if (!quarantineCache.length){
+      quarantineEl.innerHTML = `<div class="empty-note">Nothing contained yet — fire a threat or data-governance scenario.</div>`;
+      return;
+    }
+    quarantineEl.innerHTML = quarantineCache.map(q => `
+      <div class="qcard">
+        <div class="ref">${q.ref}</div>
+        <span class="pill ${q.status === 'released' ? 'released' : (q.status === 'captured' ? 'captured' : 'quarantine')}" style="align-self:flex-start;">${q.status}</span>
+        <div class="meta">${fmtTime(q.created_at)} · from ${DOMAIN_LABEL[q.domain]}</div>
+        ${q.status === 'released'
+          ? ''
+          : `<button class="small" data-release="${q.id}">Release (needs Discernment Key)</button>`}
+      </div>
+    `).join("");
+    quarantineEl.querySelectorAll("[data-release]").forEach(btn => {
+      btn.addEventListener("click", () => releaseItem(Number(btn.dataset.release)));
+    });
+  }
+
+  function updateStats(){
+    $("#statPolicies").textContent = policiesCache.length || "–";
+    $("#statEvents").textContent = eventCount;
+    $("#statQuarantine").textContent = quarantineCache.filter(q => q.status !== "released").length;
+    if (lastVerify){
+      $("#statChain").textContent = lastVerify.verified ? "verified" : "broken";
+      $("#statChain").style.color = lastVerify.verified ? "var(--allow)" : "var(--deny)";
+    }
+  }
+
+  async function loadPolicies(){
+    const r = await api("/policies");
+    if (r.ok) policiesCache = r.body;
+    renderPolicies(); renderTamperSelect(); updateStats();
+  }
+  async function loadChain(){
+    const r = await api("/audit-chain");
+    if (r.ok) chainCache = r.body;
+    renderChain();
+  }
+  async function loadQuarantine(){
+    const r = await api("/quarantine");
+    if (r.ok) quarantineCache = r.body;
+    renderQuarantine(); updateStats();
+  }
+
+  async function fireScenario(s){
+    const connected = await checkHealth();
+    if (!connected){ logLine(`<span style="color:var(--deny)">✗ Backend unreachable — start it and retry.</span>`); return; }
+
+    eventCount++;
+    logLine(`<span class="muted">[${fmtTime(new Date().toISOString())}] POST /events ›</span> ${s.domain} ${JSON.stringify(s.payload)}`);
+    const r = await api("/events", { method: "POST", body: JSON.stringify({ domain: s.domain, payload: s.payload }) });
+    if (!r.ok){
+      logLine(`<span style="color:var(--deny)">✗ Request failed (${r.status}).</span>`);
+      return;
+    }
+    const result = r.body;
+    logLine(`<b style="color:var(--${result.action})">${result.action.toUpperCase()}</b> — ${result.explanation}`);
+    (result.alerts || []).forEach(text => {
+      logLine(`<span style="color:var(--deny)">⚠ ${text}</span>`);
+    });
+    await Promise.all([loadChain(), loadQuarantine()]);
+    updateStats();
+  }
+
+  async function releaseItem(id){
+    const r = await api(`/quarantine/${id}/release`, { method: "POST", headers: discernmentHeaders() });
+    if (!r.ok){
+      logLine(`<span style="color:var(--deny)">✗ ${(r.body && r.body.message) || "Release refused."}</span>`);
+      $("#discernmentStatus").className = "pill deny"; $("#discernmentStatus").textContent = "invalid";
+      return;
+    }
+    logLine(`<span style="color:var(--allow)">✓ ${r.body.ref} released by human approval (Discernment Key verified).</span>`);
+    await loadQuarantine();
+  }
+
+  async function applySignedEdit(){
+    const id = tamperPolicySel.value;
+    const newAction = tamperActionSel.value;
+    const r = await api(`/policies/${id}`, {
+      method: "PATCH", headers: discernmentHeaders(), body: JSON.stringify({ action: newAction }),
+    });
+    if (!r.ok){
+      logLine(`<span style="color:var(--deny)">✗ ${(r.body && r.body.message) || `Request failed (${r.status}).`}</span>`);
+      if (r.status === 403){ $("#discernmentStatus").className = "pill deny"; $("#discernmentStatus").textContent = "invalid"; }
+      return;
+    }
+    logLine(`<span class="muted">[${fmtTime(new Date().toISOString())}]</span> Signed edit applied to <b>${r.body.name}</b> → action = ${r.body.action}. Re-signed by the server; the engine will enforce it as-is.`);
+    await loadPolicies();
+  }
+
+  async function deletePolicy(id){
+    const target = policiesCache.find(p => p.id === id);
+    const label = target ? target.name : id;
+    if (!window.confirm(`Delete policy "${label}"? This can't be undone from the console.`)) return;
+
+    const r = await api(`/policies/${id}`, { method: "DELETE", headers: discernmentHeaders() });
+    if (!r.ok){
+      logLine(`<span style="color:var(--deny)">✗ ${(r.body && r.body.message) || `Delete failed (${r.status}).`}</span>`);
+      if (r.status === 403){ $("#discernmentStatus").className = "pill deny"; $("#discernmentStatus").textContent = "invalid"; }
+      return;
+    }
+    logLine(`<span class="muted">[${fmtTime(new Date().toISOString())}]</span> Policy <b>${label}</b> deleted.`);
+    await loadPolicies();
+    await loadChain();
+  }
+
+  async function applyRogueEdit(){
+    const id = tamperPolicySel.value;
+    const newAction = tamperActionSel.value;
+    const r = await api(`/admin/rogue-edit/${id}`, { method: "POST", body: JSON.stringify({ action: newAction }) });
+    if (!r.ok){
+      const msg = r.status === 404
+        ? "Rogue-edit endpoint unavailable — the server needs debug=True (python run.py sets this by default)."
+        : `Request failed (${r.status}).`;
+      logLine(`<span style="color:var(--deny)">✗ ${msg}</span>`);
+      return;
+    }
+    logLine(`<span style="color:var(--deny)">[${fmtTime(new Date().toISOString())}]</span> Unsigned edit applied to <b>${r.body.name}</b> directly (no re-sign) — fire a matching scenario to see the engine catch it.`);
+    await loadPolicies();
+  }
+
+  async function simulateRewrite(){
+    const lastDecision = [...chainCache].reverse().find(b => b.kind === "decision");
+    if (!lastDecision){ logLine(`<span class="muted">No audit records yet to rewrite.</span>`); return; }
+    const r = await api(`/admin/corrupt-block/${lastDecision.idx}`, { method: "POST" });
+    if (!r.ok){
+      const msg = r.status === 404
+        ? "Corrupt-block endpoint unavailable — the server needs debug=True (python run.py sets this by default)."
+        : `Request failed (${r.status}).`;
+      logLine(`<span style="color:var(--deny)">✗ ${msg}</span>`);
+      return;
+    }
+    logLine(`<span style="color:var(--deny)">[${fmtTime(new Date().toISOString())}]</span> Block #${lastDecision.idx} rewritten directly in the database (hash left untouched) — click "Verify chain integrity".`);
+    lastVerify = null;
+    $("#chainStatusPill").className = "chain-status idle";
+    $("#chainStatusPill").textContent = "not yet verified";
+    await loadChain();
+  }
+
+  async function verifyChain(){
+    const r = await api("/audit-chain/verify", { method: "POST" });
+    if (!r.ok){ logLine(`<span style="color:var(--deny)">✗ Verify failed (${r.status}).</span>`); return; }
+    lastVerify = r.body;
+    renderChain();
+    updateStats();
+    const pill = $("#chainStatusPill");
+    if (lastVerify.verified){
+      pill.className = "chain-status ok"; pill.textContent = `verified · ${lastVerify.blocks} blocks intact`;
+    } else {
+      pill.className = "chain-status bad"; pill.textContent = `broken at block #${lastVerify.broken_at}`;
+    }
+  }
+
+  async function init(){
+    renderTabs();
+    renderScenarios();
+
+    const connected = await checkHealth();
+    if (connected){
+      await Promise.all([loadPolicies(), loadChain(), loadQuarantine()]);
+    }
+
+    $("#retryBtn").addEventListener("click", async () => {
+      const ok = await checkHealth();
+      if (ok) await Promise.all([loadPolicies(), loadChain(), loadQuarantine()]);
+    });
+    $("#signedEditBtn").addEventListener("click", applySignedEdit);
+    $("#rogueEditBtn").addEventListener("click", applyRogueEdit);
+    $("#rewriteBtn").addEventListener("click", simulateRewrite);
+    $("#verifyBtn").addEventListener("click", verifyChain);
+    $("#discernmentInput").addEventListener("input", () => {
+      const pill = $("#discernmentStatus");
+      if (!$("#discernmentInput").value){ pill.className = "pill ghost"; pill.textContent = "not entered"; return; }
+      pill.className = "pill allow"; pill.textContent = "entered — checked on next request";
+    });
+
+    // Light polling so the panel notices if the backend goes away mid-session.
+    setInterval(checkHealth, 8000);
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
