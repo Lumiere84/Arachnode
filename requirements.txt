@@ -1,0 +1,9 @@
+# Flask is the only third-party dependency for local dev. Storage
+# (sqlite3) and the test suite (unittest) are both Python standard
+# library, so a bare `pip install -r requirements.txt` is all setup
+# this project needs for `python run.py`.
+Flask>=3.0
+
+# Only needed to run under `wsgi.py` (production / Docker). The dev
+# server (`python run.py`) doesn't use this.
+gunicorn>=22.0

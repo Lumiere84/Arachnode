@@ -1,0 +1,15 @@
+# docker compose up --build
+# Console + API at http://localhost:8000/
+services:
+  arachnode:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - arachnode-data:/data
+    restart: unless-stopped
+
+volumes:
+  arachnode-data:
