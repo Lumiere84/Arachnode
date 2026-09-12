@@ -43,6 +43,12 @@ CREATE TABLE IF NOT EXISTS quarantine_items (
     created_at  TEXT NOT NULL,
     released_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS dk_codes (
+    code          TEXT PRIMARY KEY,
+    first_used_at TEXT,
+    used_count    INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -222,3 +228,73 @@ def release_quarantine_item(item_id: int):
         (_now(), item_id),
     )
     db.commit()
+
+
+# ---------------------------------------------------------------- Discernment Key Bank
+#
+# 10,000 one-time client login codes (DK0000-DK9999), used as the HTTP
+# Basic Auth *password* alongside the normal shared username. A code's
+# first successful use starts a validity window (default 24h) so the
+# rest of that same demo visit keeps working — the browser resends the
+# same Basic Auth header on every request the console makes. Once that
+# window elapses, the code is dead forever; it never resets.
+
+DK_CODE_COUNT = 10000
+
+
+def ensure_dk_codes_seeded():
+    """Idempotent: inserts DK0000..DK9999 if they don't already exist.
+    Never touches a code already in the table, so redeemed/expired
+    codes keep their history across restarts and redeploys."""
+    db = get_db()
+    db.executemany(
+        "INSERT OR IGNORE INTO dk_codes (code) VALUES (?)",
+        [(f"DK{i:04d}",) for i in range(DK_CODE_COUNT)],
+    )
+    db.commit()
+
+
+def check_and_redeem_dk_code(code: str, validity_hours: int = 24) -> bool:
+    db = get_db()
+    row = db.execute("SELECT * FROM dk_codes WHERE code = ?", (code,)).fetchone()
+    if row is None:
+        return False
+
+    now = datetime.datetime.utcnow()
+    if row["first_used_at"] is None:
+        db.execute(
+            "UPDATE dk_codes SET first_used_at = ?, used_count = used_count + 1 WHERE code = ?",
+            (_now(), code),
+        )
+        db.commit()
+        return True
+
+    first_used = datetime.datetime.fromisoformat(row["first_used_at"].rstrip("Z"))
+    if now - first_used <= datetime.timedelta(hours=validity_hours):
+        db.execute("UPDATE dk_codes SET used_count = used_count + 1 WHERE code = ?", (code,))
+        db.commit()
+        return True
+    return False
+
+
+def dk_codes_summary(validity_hours: int = 24) -> dict:
+    db = get_db()
+    rows = db.execute("SELECT code, first_used_at FROM dk_codes ORDER BY code").fetchall()
+    now = datetime.datetime.utcnow()
+    unused, active, expired = [], 0, 0
+    for row in rows:
+        if row["first_used_at"] is None:
+            unused.append(row["code"])
+            continue
+        first_used = datetime.datetime.fromisoformat(row["first_used_at"].rstrip("Z"))
+        if now - first_used <= datetime.timedelta(hours=validity_hours):
+            active += 1
+        else:
+            expired += 1
+    return {
+        "total": len(rows),
+        "unused": len(unused),
+        "active": active,
+        "expired": expired,
+        "next_unused": unused[0] if unused else None,
+    }
