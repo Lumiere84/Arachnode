@@ -10,6 +10,9 @@ Route map:
   POST   /audit-chain/verify       recompute + verify chain integrity
   GET    /quarantine               list contained items
   POST   /quarantine/<id>/release  release from containment (gated)
+  GET    /admin/dk-codes           operator-only: Discernment Key Bank
+                                    status (unused/active/expired counts
+                                    and the next unused code to hand out)
   POST   /admin/rogue-edit/<id>    demo-only: mutate a policy WITHOUT
                                     re-signing, to exercise tamper
                                     detection. Disabled unless the app
@@ -34,6 +37,8 @@ Every create/update/delete is also recorded as a "policy_change" block
 in the audit chain — an engine whose own rule set can change invisibly
 would defeat the point of everything else here being auditable.
 """
+import hmac
+
 from flask import Blueprint, current_app, jsonify, request
 
 from app import db
@@ -46,6 +51,15 @@ bp = Blueprint("arachnode", __name__)
 def _discernment_ok(req) -> bool:
     supplied = req.headers.get("X-Discernment-Key", "")
     return supplied != "" and supplied == current_app.config["DISCERNMENT_KEY"]
+
+
+def _is_master(req) -> bool:
+    """True only for the shared operator password — never for a client's
+    Discernment Key Bank code — so clients can't see the code bank."""
+    auth = req.authorization
+    return auth is not None and hmac.compare_digest(
+        auth.password or "", current_app.config["ADMIN_PASSWORD"]
+    )
 
 
 def _append_block(kind, domain, action, explanation, policy_id=None, policy_name=None):
@@ -307,6 +321,18 @@ def release_quarantine(item_id):
 
     db.release_quarantine_item(item_id)
     return jsonify(db.quarantine_row_to_dict(db.get_quarantine_item(item_id)))
+
+
+# ---------------------------------------------------------------- Discernment Key Bank (operator only)
+
+@bp.get("/admin/dk-codes")
+def dk_codes_status():
+    """Operator-only (shared admin password — a client's own DK code
+    does NOT work here): how many one-time client login codes are
+    unused/active/expired, and which unused code to hand out next."""
+    if not _is_master(request):
+        return jsonify({"error": "master_credentials_required"}), 403
+    return jsonify(db.dk_codes_summary())
 
 
 # ---------------------------------------------------------------- demo/admin
